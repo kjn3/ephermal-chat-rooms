@@ -1,0 +1,25 @@
+{
+  "name": "ephemeral-chat-rooms",
+  "version": "1.0.0",
+  "description": "Web app that allows users to create temporary chat rooms for discussions, which automatically delete after a period of inactivity or when all users leave.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "npm run build:frontend",
+    "build:frontend": "cd frontend && npm run build",
+    "start": "cd backend && npm start",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+  },
+  "keywords": ["chat", "ephemeral", "real-time", "websocket", "react", "nodejs"],
+  "author": "Kalle",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kjn3/ephemeral-chat-rooms.git"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
