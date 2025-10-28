@@ -1,4 +1,6 @@
 const { joinRoom, leaveRoom, addMessage, updateRoomActivity } = require('../services/roomService');
+const { queryItems } = require('../database/dynamodb');
+const MESSAGES_TABLE = process.env.DYNAMODB_MESSAGES_TABLE_NAME || 'messages';
 
 const activeConnections = new Map();
 
@@ -32,10 +34,15 @@ function initializeSocketHandlers(io) {
             room: result.room
           });
           
-          if (result.room.messages && result.room.messages.length > 0) {
-            const recentMessages = result.room.messages.slice(-50);
-            socket.emit('recent-messages', recentMessages);
-          }
+          try {
+            const res = await queryItems(
+              MESSAGES_TABLE,
+              'roomId = :r',
+              { ':r': roomId }
+            );
+            const items = (res.Items || []).sort((a, b) => (a.sk > b.sk ? 1 : -1));
+            socket.emit('recent-messages', items.slice(-50));
+          } catch {}
         } else {
           socket.emit('join-error', {
             message: result.message

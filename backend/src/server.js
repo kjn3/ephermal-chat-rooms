@@ -7,8 +7,8 @@ const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const roomRoutes = require('./routes/rooms');
+const authRoutes = require('./routes/auth');
 const { initializeSocketHandlers } = require('./socket/socketHandlers');
-const { initializeDatabase } = require('./database/dynamodb');
 
 const app = express();
 const server = http.createServer(app);
@@ -34,8 +34,8 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Routes
 app.use('/api/rooms', roomRoutes);
+app.use('/api/auth', authRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
@@ -43,8 +43,6 @@ app.get('/health', (req, res) => {
 
 async function startServer() {
   try {
-    await initializeDatabase();
-    
     initializeSocketHandlers(io);
     
     server.listen(PORT, () => {

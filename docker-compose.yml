@@ -1,0 +1,30 @@
+version: "3.9"
+services:
+  backend:
+    build: ./backend
+    container_name: ecr-backend
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - CORS_ORIGIN=http://localhost:3000
+      - AWS_REGION=eu-west-1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - DYNAMODB_TABLE_NAME=ecr-rooms-table
+      - DYNAMODB_USERS_TABLE_NAME=ecr-users-table
+      - DYNAMODB_MESSAGES_TABLE_NAME=ecr-messages-table
+    ports:
+      - "3001:3001"
+
+  frontend:
+    build: ./frontend
+    container_name: ecr-frontend
+    environment:
+      - REACT_APP_SOCKET_URL=http://localhost:3001
+      - REACT_APP_API_URL=http://localhost:3001
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+

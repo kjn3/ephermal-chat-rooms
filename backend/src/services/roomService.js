@@ -1,5 +1,7 @@
-const { putItem, getItem, deleteItem, updateItem } = require('../database/dynamodb');
+const { putItem, getItem, deleteItem, updateItem, queryItems } = require('../database/dynamodb');
 const { v4: uuidv4 } = require('uuid');
+const ROOMS_TABLE = process.env.DYNAMODB_TABLE_NAME || 'rooms';
+const MESSAGES_TABLE = process.env.DYNAMODB_MESSAGES_TABLE_NAME || 'messages';
 
 async function createRoom(roomData) {
   try {
@@ -12,7 +14,7 @@ async function createRoom(roomData) {
       messages: roomData.messages || []
     };
     
-    await putItem('rooms', room);
+    await putItem(ROOMS_TABLE, room);
     return room;
   } catch (error) {
     console.error('Error creating room:', error);
@@ -22,7 +24,7 @@ async function createRoom(roomData) {
 
 async function getRoom(roomId) {
   try {
-    const result = await getItem('rooms', { id: roomId });
+    const result = await getItem(ROOMS_TABLE, { id: roomId });
     return result.Item;
   } catch (error) {
     console.error('Error getting room:', error);
@@ -64,13 +66,10 @@ async function joinRoom(roomId, password, nickname) {
     
     const updatedUsers = [...(room.users || []), user];
     
-    await updateItem('rooms', 
-      { id: roomId },
-      {
-        users: updatedUsers,
-        lastActivity: new Date().toISOString()
-      }
-    );
+    await updateItem(ROOMS_TABLE, { id: roomId }, {
+      users: updatedUsers,
+      lastActivity: new Date().toISOString()
+    });
     
     return {
       success: true,
@@ -99,13 +98,10 @@ async function leaveRoom(roomId, userId) {
     
     const updatedUsers = (room.users || []).filter(user => user.id !== userId);
     
-    await updateItem('rooms',
-      { id: roomId },
-      {
-        users: updatedUsers,
-        lastActivity: new Date().toISOString()
-      }
-    );
+    await updateItem(ROOMS_TABLE, { id: roomId }, {
+      users: updatedUsers,
+      lastActivity: new Date().toISOString()
+    });
     
     return {
       success: true,
@@ -138,7 +134,7 @@ async function deleteRoom(roomId, password) {
       };
     }
     
-    await deleteItem('rooms', { id: roomId });
+    await deleteItem(ROOMS_TABLE, { id: roomId });
     
     return {
       success: true,
@@ -161,26 +157,19 @@ async function addMessage(roomId, messageData) {
       };
     }
     
+    const now = new Date().toISOString();
+    const messageId = uuidv4();
+    const sk = `${now}#${messageId}`;
     const message = {
-      id: uuidv4(),
+      roomId,
+      sk,
+      id: messageId,
       ...messageData,
-      timestamp: new Date().toISOString()
+      timestamp: now
     };
-    
-    const updatedMessages = [...(room.messages || []), message];
-    
-    await updateItem('rooms',
-      { id: roomId },
-      {
-        messages: updatedMessages,
-        lastActivity: new Date().toISOString()
-      }
-    );
-    
-    return {
-      success: true,
-      message
-    };
+    await putItem(MESSAGES_TABLE, message);
+    await updateItem(ROOMS_TABLE, { id: roomId }, { lastActivity: now });
+    return { success: true, message };
   } catch (error) {
     console.error('Error adding message:', error);
     throw error;
@@ -189,12 +178,9 @@ async function addMessage(roomId, messageData) {
 
 async function updateRoomActivity(roomId) {
   try {
-    await updateItem('rooms',
-      { id: roomId },
-      {
-        lastActivity: new Date().toISOString()
-      }
-    );
+    await updateItem(ROOMS_TABLE, { id: roomId }, {
+      lastActivity: new Date().toISOString()
+    });
   } catch (error) {
     console.error('Error updating room activity:', error);
     throw error;
