@@ -1,18 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { roomsApi, authApi } from '../utils/api';
 
 type Room = { id: string; name: string; lastActivity?: string };
 
 export default function Dashboard() {
+  const { user, logout } = useAuth();
   const [myRooms, setMyRooms] = useState<Room[]>([]);
   const [invites, setInvites] = useState<Room[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [roomName, setRoomName] = useState('');
   const [roomPassword, setRoomPassword] = useState('');
-  const [userInfo, setUserInfo] = useState({ email: 'user@example.com', nickname: 'User' });
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   return (
@@ -20,7 +24,15 @@ export default function Dashboard() {
       <div className="max-w-5xl mx-auto space-y-6">
         <header className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Dashboard</h1>
-          <div className="text-sm text-gray-400">Ephemeral Chat Rooms</div>
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-gray-400">Ephemeral Chat Rooms</div>
+            <button
+              onClick={logout}
+              className="text-sm px-3 py-1 rounded bg-red-600 hover:bg-red-500"
+            >
+              Logout
+            </button>
+          </div>
         </header>
 
         <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -76,7 +88,6 @@ export default function Dashboard() {
           </ul>
         </section>
 
-        {/* User Info Box */}
         <section className="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-medium">User Info</h2>
@@ -89,13 +100,14 @@ export default function Dashboard() {
           </div>
           <div className="space-y-2">
             <div className="text-sm">
-              <span className="text-gray-400">Email:</span> {userInfo.email}
+              <span className="text-gray-400">Email:</span> {user?.email || 'N/A'}
             </div>
             <div className="text-sm">
-              <span className="text-gray-400">Nickname:</span> {userInfo.nickname}
+              <span className="text-gray-400">Nickname:</span> {user?.nickname || 'N/A'}
             </div>
             {showChangePassword && (
               <div className="mt-3 space-y-2">
+                {error && <div className="text-sm text-red-400">{error}</div>}
                 <input
                   type="password"
                   placeholder="Current password"
@@ -112,15 +124,32 @@ export default function Dashboard() {
                 />
                 <button
                   onClick={async () => {
-
-                    console.log('Change password:', { currentPassword, newPassword });
-                    setShowChangePassword(false);
-                    setCurrentPassword('');
-                    setNewPassword('');
+                    if (!currentPassword || !newPassword) {
+                      setError('Please fill in both password fields');
+                      return;
+                    }
+                    setIsLoading(true);
+                    setError(null);
+                    try {
+                      const response = await authApi.changePassword(currentPassword, newPassword);
+                      if (response.success) {
+                        setShowChangePassword(false);
+                        setCurrentPassword('');
+                        setNewPassword('');
+                        setError(null);
+                      } else {
+                        setError(response.message || 'Failed to change password');
+                      }
+                    } catch (err: any) {
+                      setError(err.message || 'Failed to change password');
+                    } finally {
+                      setIsLoading(false);
+                    }
                   }}
-                  className="w-full py-2 rounded bg-green-600 hover:bg-green-500 text-white"
+                  disabled={isLoading}
+                  className="w-full py-2 rounded bg-green-600 hover:bg-green-500 text-white disabled:opacity-50"
                 >
-                  Update Password
+                  {isLoading ? 'Updating...' : 'Update Password'}
                 </button>
               </div>
             )}
@@ -134,25 +163,38 @@ export default function Dashboard() {
             <h3 className="text-lg font-semibold mb-4">Create New Room</h3>
             <form onSubmit={async (e) => {
               e.preventDefault();
+              setIsLoading(true);
+              setError(null);
               try {
-                const res = await fetch((process.env.REACT_APP_API_URL || 'http://localhost:3001') + '/api/rooms', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ 
-                    name: roomName || 'New Room',
-                    password: roomPassword || undefined
-                  })
+                console.log('Creating room with:', { 
+                  roomName: roomName || 'New Room', 
+                  roomPassword: roomPassword || undefined 
                 });
-                const data = await res.json();
-                if (data?.success && data?.room?.id) {
+                
+                const response = await roomsApi.createRoom(
+                  roomName || 'New Room',
+                  roomPassword || undefined
+                );
+                
+                console.log('Room creation response:', response);
+                
+                if (response.success && response.data?.room?.id) {
                   setShowCreateModal(false);
                   setRoomName('');
                   setRoomPassword('');
-                  setMyRooms((prev) => [...prev, { id: data.room.id, name: data.room.name, lastActivity: data.room.createdAt }]);
-                  navigate(`/room/${data.room.id}`);
+                  setMyRooms((prev) => [...prev, { 
+                    id: response.data!.room.id, 
+                    name: response.data!.room.name, 
+                    lastActivity: response.data!.room.createdAt 
+                  }]);
+                  navigate(`/room/${response.data!.room.id}`);
+                } else {
+                  setError(response.message || 'Failed to create room');
                 }
-              } catch (e) {
-                console.error('Failed to create room:', e);
+              } catch (err: any) {
+                setError(err.message || 'Failed to create room');
+              } finally {
+                setIsLoading(false);
               }
             }} className="space-y-4">
               <div>
@@ -174,6 +216,7 @@ export default function Dashboard() {
                   className="w-full px-3 py-2 rounded bg-gray-800 text-gray-100 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+              {error && <div className="text-sm text-red-400">{error}</div>}
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -181,16 +224,26 @@ export default function Dashboard() {
                     setShowCreateModal(false);
                     setRoomName('');
                     setRoomPassword('');
+                    setError(null);
                   }}
-                  className="flex-1 py-2 rounded bg-gray-700 hover:bg-gray-600 text-white"
+                  disabled={isLoading}
+                  className="flex-1 py-2 rounded bg-gray-700 hover:bg-gray-600 text-white disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 rounded bg-blue-600 hover:bg-blue-500 text-white"
+                  disabled={isLoading}
+                  className="flex-1 py-2 rounded bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 flex items-center justify-center"
                 >
-                  Create Room
+                  {isLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Creating...
+                    </>
+                  ) : (
+                    'Create Room'
+                  )}
                 </button>
               </div>
             </form>

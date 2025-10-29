@@ -1,45 +1,60 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { authApi } from '../utils/api';
 
 export default function Auth() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const emailRef = useRef<HTMLInputElement>(null);
   const passRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.add('dark');
     return () => document.documentElement.classList.remove('dark');
   }, []);
 
-  const cacheToken = (token: string) => {
-    localStorage.setItem('ecr_token', token);
-  };
-
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setIsLoading(true);
+    
     const email = emailRef.current?.value?.trim() || '';
     const password = passRef.current?.value || '';
-    if (!email || !password) return;
-    const base = process.env.REACT_APP_API_URL || 'http://localhost:3001';
-    const path = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
+    
+    if (!email || !password) {
+      setError('Please fill in all fields');
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const res = await fetch(base + path, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      const data = await res.json();
-      if (!data?.success || !data?.token) {
-        setError(data?.message || 'Authentication failed');
-        return;
+      const response = mode === 'login' 
+        ? await authApi.login(email, password)
+        : await authApi.register(email, password);
+
+      if (response.success && (response.data?.token || response.token)) {
+        const token = response.data?.token || response.token;
+        if (token) {
+          const user = {
+            email: response.data?.user?.email || email,
+            nickname: response.data?.user?.nickname || email.split('@')[0]
+          };
+          login(token, user);
+          navigate('/dashboard');
+        } else {
+          setError('Invalid response from server');
+        }
+      } else {
+        setError(response.message || 'Authentication failed');
       }
-      cacheToken(data.token);
-      navigate('/dashboard');
-    } catch (err) {
-      setError('Network error');
+    } catch (err: any) {
+      setError(err.message || 'Network error');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -62,10 +77,26 @@ export default function Auth() {
             <input ref={passRef} type="password" className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div className="flex gap-2">
-            <button type="submit" className="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-500">
-              {mode === 'login' ? 'Log in' : 'Register'}
+            <button 
+              type="submit" 
+              disabled={isLoading}
+              className="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            >
+              {isLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  {mode === 'login' ? 'Logging in...' : 'Registering...'}
+                </>
+              ) : (
+                mode === 'login' ? 'Log in' : 'Register'
+              )}
             </button>
-            <button type="button" onClick={() => setMode(mode === 'login' ? 'register' : 'login')} className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 hover:bg-gray-700">
+            <button 
+              type="button" 
+              onClick={() => setMode(mode === 'login' ? 'register' : 'login')} 
+              disabled={isLoading}
+              className="px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 hover:bg-gray-700 disabled:opacity-50"
+            >
               {mode === 'login' ? 'Register' : 'Use login'}
             </button>
           </div>

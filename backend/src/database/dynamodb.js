@@ -1,21 +1,28 @@
-const AWS = require('aws-sdk');
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, PutCommand, GetCommand, UpdateCommand, DeleteCommand, QueryCommand, ScanCommand } = require('@aws-sdk/lib-dynamodb');
 
-AWS.config.update({
+const client = new DynamoDBClient({
   region: process.env.AWS_REGION || 'eu-west-1',
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+  ...(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY && {
+    credentials: {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    }
+  }),
+  maxAttempts: 3,
+  retryMode: 'adaptive',
 });
 
-const dynamodb = new AWS.DynamoDB.DocumentClient();
+const dynamodb = DynamoDBDocumentClient.from(client);
 
 async function putItem(tableName, item) {
-  const params = {
+  const command = new PutCommand({
     TableName: tableName,
     Item: item
-  };
+  });
   
   try {
-    const result = await dynamodb.put(params).promise();
+    const result = await dynamodb.send(command);
     return result;
   } catch (error) {
     console.error('Error putting item:', error);
@@ -24,13 +31,13 @@ async function putItem(tableName, item) {
 }
 
 async function getItem(tableName, key) {
-  const params = {
+  const command = new GetCommand({
     TableName: tableName,
     Key: key
-  };
+  });
   
   try {
-    const result = await dynamodb.get(params).promise();
+    const result = await dynamodb.send(command);
     return result;
   } catch (error) {
     console.error('Error getting item:', error);
@@ -39,15 +46,15 @@ async function getItem(tableName, key) {
 }
 
 async function updateItem(tableName, key, updatesOrExpression, expressionAttributeValues) {
-  let params;
+  let command;
   if (typeof updatesOrExpression === 'string') {
-    params = {
+    command = new UpdateCommand({
       TableName: tableName,
       Key: key,
       UpdateExpression: updatesOrExpression,
       ExpressionAttributeValues: expressionAttributeValues,
       ReturnValues: 'ALL_NEW'
-    };
+    });
   } else {
     const updates = updatesOrExpression || {};
     const keys = Object.keys(updates);
@@ -62,17 +69,17 @@ async function updateItem(tableName, key, updatesOrExpression, expressionAttribu
       exprValues[valueKey] = updates[k];
       exprNames[nameKey] = k;
     }
-    params = {
+    command = new UpdateCommand({
       TableName: tableName,
       Key: key,
       UpdateExpression: `SET ${exprParts.join(', ')}`,
       ExpressionAttributeNames: exprNames,
       ExpressionAttributeValues: exprValues,
       ReturnValues: 'ALL_NEW'
-    };
+    });
   }
   try {
-    const result = await dynamodb.update(params).promise();
+    const result = await dynamodb.send(command);
     return result;
   } catch (error) {
     console.error('Error updating item:', error);
@@ -81,13 +88,13 @@ async function updateItem(tableName, key, updatesOrExpression, expressionAttribu
 }
 
 async function deleteItem(tableName, key) {
-  const params = {
+  const command = new DeleteCommand({
     TableName: tableName,
     Key: key
-  };
+  });
   
   try {
-    const result = await dynamodb.delete(params).promise();
+    const result = await dynamodb.send(command);
     return result;
   } catch (error) {
     console.error('Error deleting item:', error);
@@ -96,14 +103,14 @@ async function deleteItem(tableName, key) {
 }
 
 async function queryItems(tableName, keyConditionExpression, expressionAttributeValues) {
-  const params = {
+  const command = new QueryCommand({
     TableName: tableName,
     KeyConditionExpression: keyConditionExpression,
     ExpressionAttributeValues: expressionAttributeValues
-  };
+  });
   
   try {
-    const result = await dynamodb.query(params).promise();
+    const result = await dynamodb.send(command);
     return result;
   } catch (error) {
     console.error('Error querying items:', error);
@@ -112,14 +119,14 @@ async function queryItems(tableName, keyConditionExpression, expressionAttribute
 }
 
 async function scanItems(tableName, filterExpression, expressionAttributeValues) {
-  const params = {
+  const command = new ScanCommand({
     TableName: tableName,
     FilterExpression: filterExpression,
     ExpressionAttributeValues: expressionAttributeValues
-  };
+  });
   
   try {
-    const result = await dynamodb.scan(params).promise();
+    const result = await dynamodb.send(command);
     return result;
   } catch (error) {
     console.error('Error scanning items:', error);

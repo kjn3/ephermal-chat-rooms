@@ -2,10 +2,11 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const { createRoom, getRoom, deleteRoom, joinRoom } = require('../services/roomService');
 const { validateRoomData } = require('../middleware/validation');
+const { authenticateToken, optionalAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.post('/', validateRoomData, async (req, res) => {
+router.post('/', authenticateToken, validateRoomData, async (req, res) => {
   try {
     const { name, password, maxUsers = 50 } = req.body;
     const roomId = uuidv4();
@@ -22,24 +23,31 @@ router.post('/', validateRoomData, async (req, res) => {
     
     res.status(201).json({
       success: true,
-      room: {
-        id: room.id,
-        name: room.name,
-        hasPassword: !!room.password,
-        maxUsers: room.maxUsers,
-        createdAt: room.createdAt
+      data: {
+        room: {
+          id: room.id,
+          name: room.name,
+          hasPassword: !!room.password,
+          maxUsers: room.maxUsers,
+          createdAt: room.createdAt
+        }
       }
     });
   } catch (error) {
-    console.error('Error creating room:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     res.status(500).json({
       success: false,
-      message: 'Failed to create room'
+      message: 'Failed to create room',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', optionalAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const room = await getRoom(id);
@@ -72,7 +80,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.post('/:id/join', async (req, res) => {
+router.post('/:id/join', optionalAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const { password, nickname } = req.body;
@@ -97,7 +105,7 @@ router.post('/:id/join', async (req, res) => {
   }
 });
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { password } = req.body;
