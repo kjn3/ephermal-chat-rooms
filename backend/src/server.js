@@ -28,6 +28,19 @@ const PORT = process.env.PORT || 3001;
 
 app.use(helmet({
   contentSecurityPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      connectSrc: ["'self'", "ws:", "wss:", "http:", "https:"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      fontSrc: ["'self'", "https:", "data:"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"],
+    },
+  },
   crossOriginEmbedderPolicy: false
 }));
 app.use(compression());
@@ -56,8 +69,7 @@ async function startServer() {
     initializeSocketHandlers(io);
     
     server.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`Server runningg on port ${PORT}`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);

@@ -114,6 +114,8 @@ interface Room {
   userCount?: number;
   createdAt: string;
   lastActivity?: string;
+  ownerEmail?: string;
+  isOwner?: boolean;
 }
 
 interface CreateRoomResponse {
@@ -128,6 +130,10 @@ interface JoinRoomResponse {
   room: Room;
 }
 
+interface GetUserRoomsResponse {
+  rooms: Room[];
+}
+
 export const roomsApi = {
   createRoom: async (name: string, password?: string, maxUsers?: number): Promise<ApiResponse<CreateRoomResponse>> => {
     return apiClient.post('/api/rooms', { name, password, maxUsers });
@@ -135,6 +141,10 @@ export const roomsApi = {
   
   getRoom: async (roomId: string): Promise<ApiResponse<GetRoomResponse>> => {
     return apiClient.get(`/api/rooms/${roomId}`);
+  },
+  
+  getUserRooms: async (): Promise<ApiResponse<GetUserRoomsResponse>> => {
+    return apiClient.get('/api/rooms');
   },
   
   joinRoom: async (roomId: string, password?: string, nickname?: string): Promise<ApiResponse<JoinRoomResponse>> => {

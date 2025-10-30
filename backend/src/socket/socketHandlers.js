@@ -6,7 +6,6 @@ const activeConnections = new Map();
 
 function initializeSocketHandlers(io) {
   io.on('connection', (socket) => {
-    console.log('User connected:', socket.id);
     
     socket.on('join-room', async (data) => {
       try {
@@ -23,6 +22,8 @@ function initializeSocketHandlers(io) {
           });
           
           await updateRoomActivity(roomId);
+          
+          const roomSockets = await io.in(roomId).fetchSockets();
           
           socket.emit('room-joined', {
             room: result.room,
@@ -41,9 +42,21 @@ function initializeSocketHandlers(io) {
               { ':r': roomId }
             );
             const items = (res.Items || []).sort((a, b) => (a.sk > b.sk ? 1 : -1));
-            socket.emit('recent-messages', items.slice(-50));
-          } catch {}
+            
+            const frontendMessages = items.slice(-50).map(item => ({
+              id: item.id,
+              userId: item.userId,
+              nickname: item.nickname,
+              message: item.message,
+              timestamp: item.timestamp
+            }));
+            
+            socket.emit('recent-messages', frontendMessages);
+          } catch (err) {
+            console.error('Error fetching recent messages:', err);
+          }
         } else {
+          console.log('Room join failed:', result.message);
           socket.emit('join-error', {
             message: result.message
           });
@@ -81,7 +94,17 @@ function initializeSocketHandlers(io) {
         if (result.success) {
           await updateRoomActivity(connection.roomId);
           
-          io.to(connection.roomId).emit('new-message', result.message);
+          const roomSockets = await io.in(connection.roomId).fetchSockets();
+          
+          const frontendMessage = {
+            id: result.message.id,
+            userId: result.message.userId,
+            nickname: result.message.nickname,
+            message: result.message.message,
+            timestamp: result.message.timestamp
+          };
+          
+          io.to(connection.roomId).emit('new-message', frontendMessage);
         } else {
           socket.emit('error', {
             message: result.message
@@ -186,7 +209,6 @@ function initializeSocketHandlers(io) {
           activeConnections.delete(socket.id);
         }
         
-        console.log('User disconnected:', socket.id);
       } catch (error) {
         console.error('Error handling disconnect:', error);
       }

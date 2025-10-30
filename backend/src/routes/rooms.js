@@ -1,10 +1,30 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
-const { createRoom, getRoom, deleteRoom, joinRoom } = require('../services/roomService');
+const { createRoom, getRoom, deleteRoom, joinRoom, getUserRooms } = require('../services/roomService');
 const { validateRoomData } = require('../middleware/validation');
 const { authenticateToken, optionalAuth } = require('../middleware/auth');
 
 const router = express.Router();
+
+router.get('/', authenticateToken, async (req, res) => {
+  try {
+    const userEmail = req.user.sub;
+    const rooms = await getUserRooms(userEmail);
+    
+    res.json({
+      success: true,
+      data: {
+        rooms
+      }
+    });
+  } catch (error) {
+    console.error('Error getting user rooms:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get user rooms'
+    });
+  }
+});
 
 router.post('/', authenticateToken, validateRoomData, async (req, res) => {
   try {
@@ -18,7 +38,8 @@ router.post('/', authenticateToken, validateRoomData, async (req, res) => {
       maxUsers,
       createdAt: new Date().toISOString(),
       lastActivity: new Date().toISOString(),
-      users: []
+      users: [],
+      ownerEmail: req.user.sub
     });
     
     res.status(201).json({
@@ -29,7 +50,9 @@ router.post('/', authenticateToken, validateRoomData, async (req, res) => {
           name: room.name,
           hasPassword: !!room.password,
           maxUsers: room.maxUsers,
-          createdAt: room.createdAt
+          createdAt: room.createdAt,
+          ownerEmail: room.ownerEmail,
+          isOwner: room.ownerEmail === req.user.sub
         }
       }
     });
@@ -61,14 +84,18 @@ router.get('/:id', optionalAuth, async (req, res) => {
     
     res.json({
       success: true,
-      room: {
-        id: room.id,
-        name: room.name,
-        hasPassword: !!room.password,
-        maxUsers: room.maxUsers,
-        userCount: room.users ? room.users.length : 0,
-        createdAt: room.createdAt,
-        lastActivity: room.lastActivity
+      data: {
+        room: {
+          id: room.id,
+          name: room.name,
+          hasPassword: !!room.password,
+          maxUsers: room.maxUsers,
+          userCount: room.users ? room.users.length : 0,
+          createdAt: room.createdAt,
+          lastActivity: room.lastActivity,
+          ownerEmail: room.ownerEmail,
+          isOwner: req.user ? room.ownerEmail === req.user.sub : false
+        }
       }
     });
   } catch (error) {
@@ -94,7 +121,13 @@ router.post('/:id/join', optionalAuth, async (req, res) => {
     res.json({
       success: true,
       message: 'Successfully joined room',
-      room: result.room
+      data: {
+        room: {
+          ...result.room,
+          ownerEmail: result.room.ownerEmail,
+          isOwner: req.user ? result.room.ownerEmail === req.user.sub : false
+        }
+      }
     });
   } catch (error) {
     console.error('Error joining room:', error);
@@ -109,6 +142,21 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { password } = req.body;
+    
+    const room = await getRoom(id);
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: 'Room not found'
+      });
+    }
+    
+    if (room.ownerEmail !== req.user.sub) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only the room owner can delete this room'
+      });
+    }
     
     const result = await deleteRoom(id, password);
     
