@@ -201,7 +201,7 @@ export default function Dashboard() {
                             className="text-sm px-2 py-1 rounded bg-gray-600 hover:bg-gray-500 text-white transition-colors"
                             title="Copy Room ID"
                           >
-                            📋
+                            Copy Room ID
                           </button>
                           <Link 
                             to={`/room/${r.id}`} 
