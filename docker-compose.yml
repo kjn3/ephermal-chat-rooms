@@ -17,11 +17,12 @@ services:
       - "3001:3001"
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        APP_API_URL: ${APP_API_URL:-http://localhost:3001}
+        APP_SOCKET_URL: ${APP_SOCKET_URL:-http://localhost:3001}
     container_name: ecr-frontend
-    environment:
-      - REACT_APP_SOCKET_URL=http://localhost:3001
-      - REACT_APP_API_URL=http://localhost:3001
     ports:
       - "3000:80"
     depends_on:

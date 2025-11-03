@@ -11,12 +11,27 @@ const roomRoutes = require('./routes/rooms');
 const authRoutes = require('./routes/auth');
 const { initializeSocketHandlers } = require('./socket/socketHandlers');
 
+const getCorsOrigin = () => {
+  const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:3000";
+  
+  if (corsOrigin.includes(',')) {
+    return corsOrigin.split(',').map(origin => origin.trim());
+  }
+  return corsOrigin;
+};
+
+const corsOrigin = getCorsOrigin();
+
 const app = express();
+
+app.set('trust proxy', true);
+
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
-    methods: ["GET", "POST"]
+    origin: corsOrigin,
+    methods: ["GET", "POST"],
+    credentials: true
   },
   pingTimeout: 60000,
   pingInterval: 25000,
@@ -45,8 +60,10 @@ app.use(helmet({
 }));
 app.use(compression());
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || "http://localhost:3000",
-  credentials: true
+  origin: corsOrigin,
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -69,7 +86,7 @@ async function startServer() {
     initializeSocketHandlers(io);
     
     server.listen(PORT, () => {
-      console.log(`Server runningg on port ${PORT}`);
+      console.log(`Server running on port ${PORT}`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);

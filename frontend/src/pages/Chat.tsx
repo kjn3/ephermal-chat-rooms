@@ -28,7 +28,12 @@ export default function Chat() {
   const socketRef = useRef<Socket | null>(null);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
 
-  const socketUrl = useMemo(() => process.env.REACT_APP_SOCKET_URL || 'http://localhost:3001', []);
+  const socketUrl = useMemo(() => {
+    if (typeof window !== 'undefined' && (window as any).APP_CONFIG?.REACT_APP_SOCKET_URL) {
+      return (window as any).APP_CONFIG.REACT_APP_SOCKET_URL;
+    }
+    return (process.env as any).REACT_APP_SOCKET_URL || 'http://localhost:3001';
+  }, []);
 
   useEffect(() => {
     const socket = io(socketUrl, { 
