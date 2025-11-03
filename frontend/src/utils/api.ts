@@ -42,16 +42,24 @@ class ApiClient {
     };
   }
 
-  private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
-    const data = await response.json();
+  private async handleResponse<T>(response: Response, skipAuthRedirect: boolean = false): Promise<ApiResponse<T>> {
+    let data: any;
+    
+    try {
+      const text = await response.text();
+      data = text ? JSON.parse(text) : {};
+    } catch (error) {
+      console.error('Failed to parse response as JSON:', error);
+      throw new Error('Invalid response from server');
+    }
     
     if (!response.ok) {
-      if (response.status === 401) {
+      if (response.status === 401 && !skipAuthRedirect) {
         localStorage.removeItem('ecr_token');
         localStorage.removeItem('ecr_user');
         window.location.href = '/';
       }
-      throw new Error(data.message || 'Request failed');
+      throw new Error(data.message || data.error || `Request failed with status ${response.status}`);
     }
     
     return data;
@@ -65,13 +73,21 @@ class ApiClient {
     return this.handleResponse<T>(response);
   }
 
-  async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
-      method: 'POST',
-      headers: this.getAuthHeaders(),
-      body: data ? JSON.stringify(data) : undefined
-    });
-    return this.handleResponse<T>(response);
+  async post<T>(endpoint: string, data?: any, skipAuthRedirect: boolean = false): Promise<ApiResponse<T>> {
+    try {
+      const response = await fetch(`${this.baseURL}${endpoint}`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: data ? JSON.stringify(data) : undefined
+      });
+      return this.handleResponse<T>(response, skipAuthRedirect);
+    } catch (error: any) {
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        console.error('Network error:', error);
+        throw new Error('Network error: Unable to reach server. Please check your connection and CORS settings.');
+      }
+      throw error;
+    }
   }
 
   async put<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
@@ -97,11 +113,11 @@ export const apiClient = new ApiClient(API_BASE_URL);
 
 export const authApi = {
   login: async (email: string, password: string): Promise<LoginResponse> => {
-    return apiClient.post('/api/auth/login', { email, password });
+    return apiClient.post('/api/auth/login', { email, password }, true);
   },
   
   register: async (email: string, password: string, nickname?: string): Promise<LoginResponse> => {
-    return apiClient.post('/api/auth/register', { email, password, nickname });
+    return apiClient.post('/api/auth/register', { email, password, nickname }, true);
   },
   
   verifyToken: async () => {

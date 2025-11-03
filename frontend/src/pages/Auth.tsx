@@ -46,13 +46,14 @@ export default function Auth() {
           login(token, user);
           navigate('/dashboard');
         } else {
-          setError('Invalid response from server');
+          setError('Invalid response from server - no token received');
         }
       } else {
-        setError(response.message || 'Authentication failed');
+        setError(response.message || response.errors?.[0]?.msg || 'Authentication failed');
       }
     } catch (err: any) {
-      setError(err.message || 'Network error');
+      const errorMessage = err.message || 'Network error';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

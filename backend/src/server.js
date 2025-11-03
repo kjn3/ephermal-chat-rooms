@@ -24,7 +24,7 @@ const corsOrigin = getCorsOrigin();
 
 const app = express();
 
-app.set('trust proxy', true);
+app.set('trust proxy', 2);
 
 const server = http.createServer(app);
 const io = socketIo(server, {
@@ -70,7 +70,12 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100
+  max: 100,
+  validate: {
+    trustProxy: false
+  },
+  standardHeaders: true,
+  legacyHeaders: false
 });
 app.use('/api/', limiter);
 
