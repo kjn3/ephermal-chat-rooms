@@ -39,17 +39,22 @@ function initializeSocketHandlers(io) {
             const res = await queryItems(
               MESSAGES_TABLE,
               'roomId = :r',
-              { ':r': roomId }
+              { ':r': roomId },
+              {
+                limit: 50,
+                scanIndexForward: false
+              }
             );
-            const items = (res.Items || []).sort((a, b) => (a.sk > b.sk ? 1 : -1));
             
-            const frontendMessages = items.slice(-50).map(item => ({
-              id: item.id,
-              userId: item.userId,
-              nickname: item.nickname,
-              message: item.message,
-              timestamp: item.timestamp
-            }));
+            const frontendMessages = (res.Items || [])
+              .reverse()
+              .map(item => ({
+                id: item.id,
+                userId: item.userId,
+                nickname: item.nickname,
+                message: item.message,
+                timestamp: item.timestamp
+              }));
             
             socket.emit('recent-messages', frontendMessages);
           } catch (err) {

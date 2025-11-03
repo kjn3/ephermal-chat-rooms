@@ -102,11 +102,15 @@ async function deleteItem(tableName, key) {
   }
 }
 
-async function queryItems(tableName, keyConditionExpression, expressionAttributeValues) {
+async function queryItems(tableName, keyConditionExpression, expressionAttributeValues, options = {}) {
   const command = new QueryCommand({
     TableName: tableName,
     KeyConditionExpression: keyConditionExpression,
-    ExpressionAttributeValues: expressionAttributeValues
+    ExpressionAttributeValues: expressionAttributeValues,
+    ...(options.indexName && { IndexName: options.indexName }),
+    ...(options.limit && { Limit: options.limit }),
+    ...(options.scanIndexForward !== undefined && { ScanIndexForward: options.scanIndexForward }),
+    ...(options.exclusiveStartKey && { ExclusiveStartKey: options.exclusiveStartKey })
   });
   
   try {
@@ -118,27 +122,10 @@ async function queryItems(tableName, keyConditionExpression, expressionAttribute
   }
 }
 
-async function scanItems(tableName, filterExpression, expressionAttributeValues) {
-  const command = new ScanCommand({
-    TableName: tableName,
-    FilterExpression: filterExpression,
-    ExpressionAttributeValues: expressionAttributeValues
-  });
-  
-  try {
-    const result = await dynamodb.send(command);
-    return result;
-  } catch (error) {
-    console.error('Error scanning items:', error);
-    throw error;
-  }
-}
-
 module.exports = {
   putItem,
   getItem,
   updateItem,
   deleteItem,
-  queryItems,
-  scanItems
+  queryItems
 };

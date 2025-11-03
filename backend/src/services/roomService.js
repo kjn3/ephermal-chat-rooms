@@ -189,10 +189,18 @@ async function updateRoomActivity(roomId) {
 
 async function getUserRooms(userEmail) {
   try {
-    const { scanItems } = require('../database/dynamodb');
-    const result = await scanItems(ROOMS_TABLE, 'ownerEmail = :email', {
-      ':email': userEmail
-    });
+    const { queryItems } = require('../database/dynamodb');
+    const result = await queryItems(
+      ROOMS_TABLE,
+      'ownerEmail = :email',
+      {
+        ':email': userEmail
+      },
+      {
+        indexName: 'ownerEmail-index',
+        scanIndexForward: false
+      }
+    );
     
     return (result.Items || []).map(room => ({
       id: room.id,
@@ -206,6 +214,24 @@ async function getUserRooms(userEmail) {
       isOwner: true
     }));
   } catch (error) {
+    if (error.name === 'ValidationException' && error.message.includes('index')) {
+      const { scanItems } = require('../database/dynamodb');
+      const result = await scanItems(ROOMS_TABLE, 'ownerEmail = :email', {
+        ':email': userEmail
+      });
+      
+      return (result.Items || []).map(room => ({
+        id: room.id,
+        name: room.name,
+        hasPassword: !!room.password,
+        maxUsers: room.maxUsers,
+        userCount: room.users ? room.users.length : 0,
+        createdAt: room.createdAt,
+        lastActivity: room.lastActivity,
+        ownerEmail: room.ownerEmail,
+        isOwner: true
+      }));
+    }
     console.error('Error getting user rooms:', error);
     throw error;
   }
