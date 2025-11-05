@@ -1,0 +1,30 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  AWS_REGION: eu-west-1
+  AWS_GHA_ROLE: ${{ secrets.AWS_GHA_ROLE }}
+
+jobs:
+  build-n-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+      
+      - name: Set up AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ env.AWS_GHA_ROLE }}
+          role-session-name: gha-session
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Test credentials
+        run: aws sts get-caller-identity
