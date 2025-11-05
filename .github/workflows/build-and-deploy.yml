@@ -38,7 +38,6 @@ jobs:
           context: ./backend
           file: ./backend/Dockerfile
           push: true
-          platforms: linux/arm64
           tags: ${{ secrets.AWS_ECR_REPOSITORY_URL }}/backend:latest
       
       - name: Build and push frontend image
