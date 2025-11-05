@@ -25,6 +25,7 @@ jobs:
           role-to-assume: ${{ env.AWS_GHA_ROLE }}
           role-session-name: gha-session
           aws-region: ${{ env.AWS_REGION }}
+          mask-aws-account-id: true
       
       - name: Test credentials
         run: aws sts get-caller-identity
