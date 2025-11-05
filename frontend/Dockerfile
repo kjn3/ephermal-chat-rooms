@@ -17,10 +17,9 @@ RUN npm ci && npm cache clean --force
 
 COPY . .
 
+RUN npm run build
 RUN chown -R nodejs:nodejs /app
 USER nodejs
-
-RUN npm run build
 
 FROM nginx:alpine
 
