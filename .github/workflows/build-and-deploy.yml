@@ -46,5 +46,4 @@ jobs:
           context: ./frontend
           file: ./frontend/Dockerfile
           push: true
-          platforms: linux/arm64
           tags: ${{ secrets.AWS_ECR_REPOSITORY_URL }}/frontend:latest
