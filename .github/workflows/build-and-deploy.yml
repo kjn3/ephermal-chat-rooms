@@ -60,7 +60,6 @@ jobs:
           task-definition: aws/backend-task-definition.json
           service: ${{ secrets.AWS_BACKEND_SERVICE_NAME }}
           cluster: ${{ secrets.AWS_ECS_CLUSTER_NAME }}
-          region: ${{ env.AWS_REGION }}
           wait-for-service-stability: true
       
       - name: Deploy frontend service
@@ -69,5 +68,4 @@ jobs:
           task-definition: aws/frontend-task-definition.json
           service: ${{ secrets.AWS_FRONTEND_SERVICE_NAME }}
           cluster: ${{ secrets.AWS_ECS_CLUSTER_NAME }}
-          region: ${{ env.AWS_REGION }}
           wait-for-service-stability: true
