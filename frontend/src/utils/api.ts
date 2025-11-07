@@ -1,8 +1,8 @@
 const getApiUrl = (): string => {
-  if (typeof window !== 'undefined' && (window as any).APP_CONFIG?.REACT_APP_API_URL) {
-    return (window as any).APP_CONFIG.REACT_APP_API_URL;
+  if (typeof window !== 'undefined' && (window as any).APP_CONFIG?.APP_API_URL) {
+    return (window as any).APP_CONFIG.APP_API_URL;
   }
-  return (process.env as any).REACT_APP_API_URL || 'http://localhost:3001';
+  return (process.env as any).APP_API_URL || 'http://localhost:3001';
 };
 
 const API_BASE_URL = getApiUrl();
