@@ -29,10 +29,10 @@ export default function Chat() {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
 
   const socketUrl = useMemo(() => {
-    if (typeof window !== 'undefined' && (window as any).APP_CONFIG?.REACT_APP_SOCKET_URL) {
-      return (window as any).APP_CONFIG.REACT_APP_SOCKET_URL;
+    if (typeof window !== 'undefined' && (window as any).APP_CONFIG?.APP_SOCKET_URL) {
+      return (window as any).APP_CONFIG.APP_SOCKET_URL;
     }
-    return (process.env as any).REACT_APP_SOCKET_URL || 'http://localhost:3001';
+    return (process.env as any).APP_SOCKET_URL || 'http://localhost:3001';
   }, []);
 
   useEffect(() => {
