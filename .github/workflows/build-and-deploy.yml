@@ -51,8 +51,8 @@ jobs:
       
       - name: Update task definitions
         run: |
-          sed -i "s/ACCOUNT_ID/${env.AWS_ACCOUNT_ID}/g" aws/backend-task-definition.json
-          sed -i "s/ACCOUNT_ID/${env.AWS_ACCOUNT_ID}/g" aws/frontend-task-definition.json
+          sed -i "s/ACCOUNT_ID/${{ env.AWS_ACCOUNT_ID }}/g" aws/backend-task-definition.json
+          sed -i "s/ACCOUNT_ID/${{ env.AWS_ACCOUNT_ID }}/g" aws/frontend-task-definition.json
       
       - name: Deploy backend service
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
