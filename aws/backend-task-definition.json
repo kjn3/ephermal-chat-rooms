@@ -1,0 +1,72 @@
+{
+    "family": "ecr-kalle-test-backend-tg",
+    "containerDefinitions": [
+        {
+            "cpu": 0,
+            "environment": [
+                {
+                    "name": "DYNAMODB_TABLE_NAME",
+                    "value": "ecr-rooms-table"
+                },
+                {
+                    "name": "NODE_ENV",
+                    "value": "production"
+                },
+                {
+                    "name": "DYNAMODB_USERS_TABLE_NAME",
+                    "value": "ecr-users-table"
+                },
+                {
+                    "name": "CORS_ORIGIN",
+                    "value": "https://ecr.kallenarhi.com"
+                },
+                {
+                    "name": "DYNAMODB_MESSAGES_TABLE_NAME",
+                    "value": "ecr-messages-table"
+                }
+            ],
+            "environmentFiles": [],
+            "essential": true,
+            "image": "ACCOUNT_ID.dkr.ecr.eu-west-1.amazonaws.com/ecr-kalle/backend:latest",
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/ecr-kalle-test-backend-tg",
+                    "awslogs-create-group": "true",
+                    "awslogs-region": "eu-west-1",
+                    "awslogs-stream-prefix": "ecs"
+                },
+                "secretOptions": []
+            },
+            "mountPoints": [],
+            "name": "backend",
+            "portMappings": [
+                {
+                    "appProtocol": "http",
+                    "containerPort": 3001,
+                    "hostPort": 3001,
+                    "name": "backend-3001-tcp",
+                    "protocol": "tcp"
+                }
+            ],
+            "systemControls": [],
+            "ulimits": [],
+            "volumesFrom": []
+        }
+    ],
+    "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/ecr-kalle-test-fargate-task-role",
+    "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/ecsTaskExecutionRole",
+    "networkMode": "awsvpc",
+    "volumes": [],
+    "placementConstraints": [],
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "cpu": "256",
+    "memory": "512",
+    "runtimePlatform": {
+        "cpuArchitecture": "ARM64",
+        "operatingSystemFamily": "LINUX"
+    },
+    "enableFaultInjection": false
+}

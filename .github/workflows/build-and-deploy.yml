@@ -8,6 +8,7 @@ on:
 env:
   AWS_REGION: eu-west-1
   AWS_GHA_ROLE: ${{ secrets.AWS_GHA_ROLE }}
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
 
 jobs:
   build-n-deploy:
@@ -47,3 +48,26 @@ jobs:
           file: ./frontend/Dockerfile
           push: true
           tags: ${{ secrets.AWS_ECR_REPOSITORY_URL }}/frontend:latest
+      
+      - name: Update task definitions
+        run: |
+          sed -i "s/ACCOUNT_ID/${env.AWS_ACCOUNT_ID}/g" aws/backend-task-definition.json
+          sed -i "s/ACCOUNT_ID/${env.AWS_ACCOUNT_ID}/g" aws/frontend-task-definition.json
+      
+      - name: Deploy backend service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: aws/backend-task-definition.json
+          service: ${{ secrets.AWS_BACKEND_SERVICE_NAME }}
+          cluster: ${{ secrets.AWS_ECS_CLUSTER_NAME }}
+          region: ${{ env.AWS_REGION }}
+          wait-for-service-stability: true
+      
+      - name: Deploy frontend service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: aws/frontend-task-definition.json
+          service: ${{ secrets.AWS_FRONTEND_SERVICE_NAME }}
+          cluster: ${{ secrets.AWS_ECS_CLUSTER_NAME }}
+          region: ${{ env.AWS_REGION }}
+          wait-for-service-stability: true
