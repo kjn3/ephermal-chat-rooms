@@ -3,13 +3,21 @@ const { v4: uuidv4 } = require('uuid');
 const ROOMS_TABLE = process.env.DYNAMODB_TABLE_NAME || 'rooms';
 const MESSAGES_TABLE = process.env.DYNAMODB_MESSAGES_TABLE_NAME || 'messages';
 
+const INACTIVITY_THRESHOLD = parseInt(process.env.INACTIVITY_THRESHOLD || '86400', 10);
+
+function calculateTTL() {
+  return Math.floor(Date.now() / 1000) + INACTIVITY_THRESHOLD;
+}
+
 async function createRoom(roomData) {
   try {
+    const now = new Date().toISOString();
     const room = {
       ...roomData,
       id: roomData.id || uuidv4(),
-      createdAt: roomData.createdAt || new Date().toISOString(),
-      lastActivity: roomData.lastActivity || new Date().toISOString(),
+      createdAt: roomData.createdAt || now,
+      lastActivity: roomData.lastActivity || now,
+      ttl: calculateTTL(),
       users: roomData.users || [],
       messages: roomData.messages || []
     };
@@ -68,7 +76,8 @@ async function joinRoom(roomId, password, nickname) {
     
     await updateItem(ROOMS_TABLE, { id: roomId }, {
       users: updatedUsers,
-      lastActivity: new Date().toISOString()
+      lastActivity: new Date().toISOString(),
+      ttl: calculateTTL()
     });
     
     return {
@@ -100,7 +109,8 @@ async function leaveRoom(roomId, userId) {
     
     await updateItem(ROOMS_TABLE, { id: roomId }, {
       users: updatedUsers,
-      lastActivity: new Date().toISOString()
+      lastActivity: new Date().toISOString(),
+      ttl: calculateTTL()
     });
     
     return {
@@ -165,10 +175,11 @@ async function addMessage(roomId, messageData) {
       sk,
       id: messageId,
       ...messageData,
-      timestamp: now
+      timestamp: now,
+      ttl: calculateTTL()
     };
     await putItem(MESSAGES_TABLE, message);
-    await updateItem(ROOMS_TABLE, { id: roomId }, { lastActivity: now });
+    await updateItem(ROOMS_TABLE, { id: roomId }, { lastActivity: now, ttl: calculateTTL() });
     return { success: true, message };
   } catch (error) {
     console.error('Error adding message:', error);
@@ -179,7 +190,8 @@ async function addMessage(roomId, messageData) {
 async function updateRoomActivity(roomId) {
   try {
     await updateItem(ROOMS_TABLE, { id: roomId }, {
-      lastActivity: new Date().toISOString()
+      lastActivity: new Date().toISOString(),
+      ttl: calculateTTL()
     });
   } catch (error) {
     console.error('Error updating room activity:', error);
