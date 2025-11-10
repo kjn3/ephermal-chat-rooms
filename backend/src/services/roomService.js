@@ -51,7 +51,7 @@ async function joinRoom(roomId, password, nickname) {
       };
     }
     
-    if (room.password && room.password !== password) {
+    if (room.password && (!password || room.password !== password)) {
       return {
         success: false,
         message: 'Invalid password'

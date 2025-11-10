@@ -375,7 +375,10 @@ export default function Dashboard() {
                   }]);
                   setToast({ message: 'Room created successfully!', type: 'success' });
                   setTimeout(() => setToast(null), 3000);
-                  navigate(`/room/${response.data!.room.id}`);
+                  const roomUrl = roomPassword
+                    ? `/room/${response.data!.room.id}?password=${encodeURIComponent(roomPassword)}`
+                    : `/room/${response.data!.room.id}`;
+                  navigate(roomUrl);
                 } else {
                   setError(response.message || 'Failed to create room');
                 }
