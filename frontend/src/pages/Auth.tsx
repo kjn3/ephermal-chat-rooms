@@ -103,9 +103,6 @@ export default function Auth() {
           </div>
         </form>
 
-        <div className="text-sm text-gray-400 flex items-center justify-between">
-          <button onClick={() => navigate('/')} className="underline hover:text-gray-200">Continue as visitor</button>
-        </div>
       </div>
     </div>
   );

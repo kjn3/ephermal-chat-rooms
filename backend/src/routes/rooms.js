@@ -1,6 +1,6 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
-const { createRoom, getRoom, deleteRoom, joinRoom, getUserRooms } = require('../services/roomService');
+const { createRoom, getRoom, deleteRoom, joinRoom, getUserRooms, extendRoomTTL } = require('../services/roomService');
 const { validateRoomData } = require('../middleware/validation');
 const { authenticateToken, optionalAuth } = require('../middleware/auth');
 
@@ -94,7 +94,8 @@ router.get('/:id', optionalAuth, async (req, res) => {
           createdAt: room.createdAt,
           lastActivity: room.lastActivity,
           ownerEmail: room.ownerEmail,
-          isOwner: req.user ? room.ownerEmail === req.user.sub : false
+          isOwner: req.user ? room.ownerEmail === req.user.sub : false,
+          ttl: room.ttl
         }
       }
     });
@@ -174,6 +175,25 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       success: false,
       message: 'Failed to delete room'
     });
+  }
+});
+
+router.post('/:id/extend-ttl', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await extendRoomTTL(id);
+    res.json({
+      success: true,
+      message: 'Room TTL extended successfully',
+      data: {
+        room: {
+          ttl: result.room.ttl
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error extending room TTL:', error);
+    res.status(500).json({ success: false, message: 'Failed to extend room TTL' });
   }
 });
 

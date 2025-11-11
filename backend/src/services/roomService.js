@@ -249,6 +249,23 @@ async function getUserRooms(userEmail) {
   }
 }
 
+async function extendRoomTTL(roomId) {
+  try {
+    const room = await getRoom(roomId);
+    if (!room) {
+      return {
+        success: false,
+        message: 'Room not found'
+      };
+    }
+    await updateItem(ROOMS_TABLE, { id: roomId }, { ttl: calculateTTL() + 86400, lastActivity: new Date().toISOString() });
+    return { success: true, message: 'Room TTL extended successfully' };
+  } catch (error) {
+    console.error('Error extending room TTL:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   createRoom,
   getRoom,
@@ -257,5 +274,6 @@ module.exports = {
   deleteRoom,
   addMessage,
   updateRoomActivity,
-  getUserRooms
+  getUserRooms,
+  extendRoomTTL
 };
