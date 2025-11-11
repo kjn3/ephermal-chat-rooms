@@ -176,5 +176,9 @@ export const roomsApi = {
   
   deleteRoom: async (roomId: string, password?: string): Promise<ApiResponse> => {
     return apiClient.delete(`/api/rooms/${roomId}`, { password });
+  },
+  
+  extendRoomTTL: async (roomId: string): Promise<ApiResponse<{ ttl: number }>> => {
+    return apiClient.post(`/api/rooms/${roomId}/extend-ttl`);
   }
 };

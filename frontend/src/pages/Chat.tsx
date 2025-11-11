@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
+import { roomsApi } from '../utils/api';
 
 type ChatMessage = {
   id: string;
@@ -25,6 +26,8 @@ export default function Chat() {
   const [currentNickname, setCurrentNickname] = useState(nickname);
   const [showNicknameModal, setShowNicknameModal] = useState(false);
   const [newNickname, setNewNickname] = useState('');
+  const [roomTTL, setRoomTTL] = useState<number | null>(null);
+  const [isExtending, setIsExtending] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
 
@@ -73,11 +76,23 @@ export default function Chat() {
         setCurrentUserId(data.user.id);
         setCurrentNickname(data.user.nickname);
       }
+      if (data.room?.ttl) {
+        setRoomTTL(data.room.ttl);
+      }
     });
     
     socket.on('join-error', (e: { message: string }) => {
       console.error('Join room error:', e);
-      setError(e?.message || 'Failed to join room');
+      const errorMsg = e?.message || 'Failed to join room';
+      setError(errorMsg);
+
+      if (errorMsg.includes(password) && !password && roomId) {
+        const roomPassword = prompt('This room requires a password. Please enter it:');
+        if (roomPassword !== null) {
+          navigate(`/room/${roomId}?password=${encodeURIComponent(roomPassword)}${nickname ? `&nickname=${encodeURIComponent(nickname)}` : ''}`, { replace: true });
+          window.location.reload();
+        }
+      }
     });
     
     socket.on('recent-messages', (recent: ChatMessage[]) => {
@@ -125,6 +140,76 @@ export default function Chat() {
       socket.disconnect();
     };
   }, [roomId, password, nickname, socketUrl]);
+
+  useEffect(() => {
+    if (!roomId) return;
+
+    const fetchRoomInfo = async () => {
+      try {
+        const response = await roomsApi.getRoom(roomId);
+        if (response.success && response.data?.room?.ttl) {
+          setRoomTTL(response.data.room.ttl);
+        }
+      } catch (err) {
+        console.error('Error fetching room info:', error);
+      }
+    };
+
+    fetchRoomInfo();
+  }, [roomId]);
+
+  useEffect(() => {
+    if (!roomTTL) return;
+
+    const updateCountdown = () => {
+      const now = Math.floor(Date.now() / 1000);
+      const remaining = roomTTL - now;
+      if (remaining <= 0) {
+        setRoomTTL(null);
+      }
+    };
+
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [roomTTL]);
+
+  const formatTimeRemaining = (ttl: number): string => {
+    const now = Math.floor(Date.now() / 1000);
+    const remaining = ttl - now;
+
+    if (remaining <= 0) return 'Expired';
+
+    const hours = Math.floor(remaining / 3600);
+    const minutes = Math.floor((remaining % 3600) / 60);
+    const seconds = remaining % 60;
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${seconds}s`;
+    } else if (minutes > 0){
+      return `${minutes}m ${seconds}s`;
+    } else {
+      return `${seconds}s`;
+    }
+  };
+
+  const handleExtendRoom = async () => {
+    if (!roomId || isExtending) return;
+
+    setIsExtending(true);
+    try {
+      const response = await roomsApi.extendRoomTTL(roomId);
+      if (response.success && response.data?.ttl) {
+        setRoomTTL(response.data.ttl);
+        setError(null);
+      } else {
+        setError(response.message || 'Failed to extend room');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to extend room');
+    } finally {
+      setIsExtending(false);
+    }
+  };
 
   useEffect(() => {
     scrollerRef.current?.scrollTo({ top: scrollerRef.current.scrollHeight, behavior: 'smooth' });

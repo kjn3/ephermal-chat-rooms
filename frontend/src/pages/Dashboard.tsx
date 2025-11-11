@@ -203,12 +203,17 @@ export default function Dashboard() {
                           >
                             Copy Room ID
                           </button>
-                          <Link 
-                            to={`/room/${r.id}`} 
-                            className="text-sm px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white transition-colors"
+                          <button
+                            onClick={async () => {
+                              if (r.hasPassword) {
+                                const roomPassword = prompt('This room requires a password. Please enter it:');
+                                if (roomPassword === null) return;
+                                navigate(`/room/${r.id}?password?${encodeURIComponent(roomPassword)}`);
+                              } else {
+                                navigate(`/room/${r.id}`);
+                              }
+                            }}
                           >
-                            Open
-                          </Link>
                           {r.isOwner && (
                             <button
                               onClick={async () => {
