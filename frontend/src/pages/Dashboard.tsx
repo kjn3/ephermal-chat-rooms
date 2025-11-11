@@ -214,6 +214,8 @@ export default function Dashboard() {
                               }
                             }}
                           >
+                            Open
+                          </button>
                           {r.isOwner && (
                             <button
                               onClick={async () => {
