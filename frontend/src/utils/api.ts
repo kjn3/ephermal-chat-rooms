@@ -139,6 +139,7 @@ interface Room {
   lastActivity?: string;
   ownerEmail?: string;
   isOwner?: boolean;
+  ttl?: number;
 }
 
 interface CreateRoomResponse {
