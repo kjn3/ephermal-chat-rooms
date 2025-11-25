@@ -97,7 +97,7 @@ function initializeSocketHandlers(io) {
         const result = await addMessage(connection.roomId, messageData);
         
         if (result.success) {
-          await updateRoomActivity(connection.roomId);
+          //await updateRoomActivity(connection.roomId);
           
           const roomSockets = await io.in(connection.roomId).fetchSockets();
           

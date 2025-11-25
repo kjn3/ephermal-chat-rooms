@@ -137,15 +137,6 @@ async function deleteRoom(roomId, password) {
       };
     }
     
-    if (room.password) {
-      if (!room.password || room.password !== password) {
-        return {
-          success: false,
-          message: 'Invalid password'
-        };
-      }
-    }
-    
     await deleteItem(ROOMS_TABLE, { id: roomId });
     
     return {
