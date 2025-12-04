@@ -23,6 +23,10 @@
                 {
                     "name": "DYNAMODB_MESSAGES_TABLE_NAME",
                     "value": "ecr-messages-table"
+                },
+                {
+                    "name": "DYNAMODB_INVITATIONS_TABLE_NAME",
+                    "value": "ecr-invitations-table"
                 }
             ],
             "environmentFiles": [],
