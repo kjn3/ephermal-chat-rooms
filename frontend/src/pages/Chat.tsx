@@ -340,7 +340,6 @@ export default function Chat() {
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full text-gray-400">
               <div className="text-center">
-                <div className="text-4xl mb-2">💬</div>
                 <p>No messages yet. Start the conversation!</p>
               </div>
             </div>

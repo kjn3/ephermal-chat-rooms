@@ -293,7 +293,57 @@ export default function Dashboard() {
                     <div className="font-medium">{r.name}</div>
                     <div className="text-xs text-gray-400">Last activity {new Date(r.lastActivity || '').toLocaleString()}</div>
                   </div>
-                  <Link to={`/room/${r.id}`} className="text-sm underline">Join</Link>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const roomResponse = await roomsApi.getRoom(r.id);
+                        if (!roomResponse.success || !roomResponse.data?.room) {
+                          toast.error('Room not found. It may have been deleted or expired.');
+                          setInvites(prev => prev.filter(inv => inv.id !== r.id));
+                          return;
+                        }
+                       
+                        const room = roomResponse.data.room;
+                       
+                        if (room.hasPassword) {
+                          setPendingRoomId(r.id);
+                          setShowPasswordModal(true);
+                          return;
+                        }
+                       
+                        const joinResponse = await roomsApi.joinRoom(r.id);
+                        if (joinResponse.success && joinResponse.data?.room) {
+                          setMyRooms((prev) => {
+                            const exists = prev.some(room => room.id === r.id);
+                            if (exists) return prev;
+                            return [...prev, {
+                              id: joinResponse.data!.room.id,
+                              name: joinResponse.data!.room.name,
+                              lastActivity: joinResponse.data!.room.lastActivity,
+                              isOwner: joinResponse.data!.room.isOwner || false,
+                              ownerEmail: joinResponse.data!.room.ownerEmail || 'Unknown',
+                              createdAt: joinResponse.data!.room.createdAt,
+                              hasPassword: joinResponse.data!.room.hasPassword,
+                              userCount: joinResponse.data!.room.userCount,
+                              maxUsers: joinResponse.data!.room.maxUsers
+                            }];
+                          });
+
+                          setInvites(prev => prev.filter(inv => inv.id !== r.id));
+                          toast.success('Successfully joined room!');
+                          navigate(`/room/${r.id}`);
+                        } else {
+                          toast.error(joinResponse.message || 'Failed to join room');
+                        }
+                      } catch (err: any) {
+                        console.error('Error joining room from invitation:', err);
+                        toast.error(err.message || 'Failed to join room');
+                      }
+                    }}
+                    className="text-sm px-3 py-1 rounded bg-green-600 hover:bg-green-500 text-white transition-colors"
+                  >
+                    Join
+                  </button>
                 </li>
               ))}
               {invites.length === 0 && <div className="text-sm text-gray-400">No invites at the moment.</div>}
@@ -599,29 +649,46 @@ export default function Dashboard() {
             setShowPasswordModal(false);
             setPendingRoomId(null);
           }}
-          onSubmit={(password) => {
+          onSubmit={async (password) => {
             if (pendingRoomId) {
-              navigate(`/room/${pendingRoomId}?password=${encodeURIComponent(password)}`);
-              setShowPasswordModal(false);
-              setPendingRoomId(null);
-            }
-          }}
-          title="Enter Room Password"
-          />
-      )}
+              try {
+                const joinResponse = await roomsApi.joinRoom(pendingRoomId, password);
+                if (joinResponse.success && joinResponse.data?.room) {
 
-{showPasswordModal && (
-        <PasswordModal
-          isOpen={showPasswordModal}
-          onClose={() => {
+                  const isFromInvitation = invites.some(inv => inv.id === pendingRoomId);
+                 
+                  if (isFromInvitation) {
+                    setMyRooms((prev) => {
+                      const exists = prev.some(room => room.id === pendingRoomId);
+                      if (exists) return prev;
+                      return [...prev, {
+                        id: joinResponse.data!.room.id,
+                        name: joinResponse.data!.room.name,
+                        lastActivity: joinResponse.data!.room.lastActivity,
+                        isOwner: joinResponse.data!.room.isOwner || false,
+                        ownerEmail: joinResponse.data!.room.ownerEmail || 'Unknown',
+                        createdAt: joinResponse.data!.room.createdAt,
+                        hasPassword: joinResponse.data!.room.hasPassword,
+                        userCount: joinResponse.data!.room.userCount,
+                        maxUsers: joinResponse.data!.room.maxUsers
+                      }];
+                    });
+                    setInvites(prev => prev.filter(inv => inv.id !== pendingRoomId));
+                  }
+                 
+                  toast.success('Successfully joined room!');
+                  setShowPasswordModal(false);
+                  setPendingRoomId(null);
+                  navigate(`/room/${pendingRoomId}?password=${encodeURIComponent(password)}`);
+                } else {
+                  toast.error(joinResponse.message || 'Failed to join room');
+                }
+              } catch (err: any) {
+                console.error('Error joining room with password:', err);
+                toast.error(err.message || 'Failed to join room');
             setShowPasswordModal(false);
             setPendingRoomId(null);
-          }}
-          onSubmit={(password) => {
-            if (pendingRoomId) {
-              navigate(`/room/${pendingRoomId}?password=${encodeURIComponent(password)}`);
-              setShowPasswordModal(false);
-              setPendingRoomId(null);
+            }
             }
           }}
           title="Enter Room Password"
