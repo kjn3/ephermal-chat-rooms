@@ -158,6 +158,18 @@ interface GetUserRoomsResponse {
   rooms: Room[];
 }
 
+interface Invitation {
+  id: string;
+  roomId: string;
+  roomName: string;
+  inviterEmail: string;
+  createdAt: string;
+}
+
+interface GetInvitationsResponse {
+  invitations: Invitation[];
+}
+
 export const roomsApi = {
   createRoom: async (name: string, password?: string, maxUsers?: number): Promise<ApiResponse<CreateRoomResponse>> => {
     return apiClient.post('/api/rooms', { name, password, maxUsers });
@@ -181,5 +193,13 @@ export const roomsApi = {
   
   extendRoomTTL: async (roomId: string): Promise<ApiResponse<{ ttl: number }>> => {
     return apiClient.post(`/api/rooms/${roomId}/extend-ttl`);
+  },
+
+  inviteUser: async (roomId: string, email: string): Promise<ApiResponse> => {
+    return apiClient.post(`/api/rooms/${roomId}/invite`, { email });
+  },
+
+  getInvitations: async (): Promise<ApiResponse<GetInvitationsResponse>> => {
+    return apiClient.get('/api/rooms/invitations');
   }
 };

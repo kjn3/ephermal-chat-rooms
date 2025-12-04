@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import './index.css';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -36,6 +37,7 @@ function App() {
             />
           </Routes>
         </BrowserRouter>
+        <Toaster position="top-right" richColors />
       </AuthProvider>
     </ErrorBoundary>
   );

@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { roomsApi, authApi } from '../utils/api';
+import { PasswordModal } from '../components/PasswordModal';
 
 type Room = { 
   id: string; 
@@ -31,7 +33,11 @@ export default function Dashboard() {
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinRoomId, setJoinRoomId] = useState('');
   const [joinRoomPassword, setJoinRoomPassword] = useState('');
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [pendingRoomId, setPendingRoomId] = useState<string | null>(null);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRoomId, setInviteRoomId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -54,7 +60,26 @@ export default function Dashboard() {
       }
     };
 
+    const fetchInvitations = async () => {
+      if (!user) return;
+
+      try {
+        const response = await roomsApi.getInvitations();
+        if (response.success && response.data?.invitations) {
+          setInvites(response.data.invitations.map((inv: any) => ({
+            id: inv.roomId,
+            name: inv.roomName,
+            lastActivity: inv.createdAt,
+            ownerEmail: inv.inviterEmail
+          })));
+        }
+      } catch (err: any) {
+        console.error('Error fetching invitations:', err);
+      }
+    }
+
     fetchUserRooms();
+    fetchInvitations();
   }, [user]);
 
   return (
@@ -110,24 +135,6 @@ export default function Dashboard() {
               <button
                 onClick={() => setError(null)}
                 className="text-red-400 hover:text-red-300 ml-4"
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        )}
-
-        {toast && (
-          <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 ${
-            toast.type === 'success' 
-              ? 'bg-green-900/20 border border-green-800 text-green-300' 
-              : 'bg-red-900/20 border border-red-800 text-red-300'
-          }`}>
-            <div className="flex items-center justify-between">
-              <span>{toast.message}</span>
-              <button
-                onClick={() => setToast(null)}
-                className="ml-4 text-gray-400 hover:text-gray-300"
               >
                 ×
               </button>
@@ -191,11 +198,9 @@ export default function Dashboard() {
                             onClick={async () => {
                               try {
                                 await navigator.clipboard.writeText(r.id);
-                                setToast({ message: 'Room ID copied to clipboard!', type: 'success' });
-                                setTimeout(() => setToast(null), 3000);
+                                toast.success('Room ID copied to clipboard!');
                               } catch (err) {
-                                setToast({ message: 'Failed to copy Room ID', type: 'error' });
-                                setTimeout(() => setToast(null), 3000);
+                                toast.error('Failed to copy Room ID');
                               }
                             }}
                             className="text-sm px-2 py-1 rounded bg-gray-600 hover:bg-gray-500 text-white transition-colors"
@@ -206,17 +211,28 @@ export default function Dashboard() {
                           <button
                             onClick={async () => {
                               if (r.hasPassword) {
-                                const roomPassword = prompt('This room requires a password. Please enter it:');
-                                if (roomPassword === null) return;
-                                navigate(`/room/${r.id}?password?${encodeURIComponent(roomPassword)}`);
+                                setPendingRoomId(r.id);
+                                setShowPasswordModal(true);
                               } else {
                                 navigate(`/room/${r.id}`);
                               }
                             }}
+                            className='text-sm px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white transition-colors'
                           >
                             Open
                           </button>
                           {r.isOwner && (
+                            <>
+                            <button
+                              onClick={() => {
+                                setInviteRoomId(r.id);
+                                setShowInviteModal(true);
+                              }}
+                              className='text-sm px-3 py-1 rounded bg-green-600 hover:bg-green-500 text-white transition-colors'
+                              title="Invite user by email"
+                              >
+                                Invite
+                              </button>
                             <button
                               onClick={async () => {
                                 if (window.confirm('Are you sure you want to delete this room? This action cannot be undone.')) {
@@ -225,10 +241,10 @@ export default function Dashboard() {
                                     if (response.success) {
                                       setMyRooms(prev => prev.filter(room => room.id !== r.id));
                                       setError(null);
-                                      setToast({ message: 'Room deleted successfully!', type: 'success' });
-                                      setTimeout(() => setToast(null), 3000);
+                                      toast.success('Room deleted!');
                                     } else {
                                       setError(response.message || 'Failed to delete room');
+                                      toast.error(response.message || 'Failed to delete room');
                                     }
                                   } catch (err: any) {
                                     setError(err.message || 'Failed to delete room');
@@ -239,6 +255,7 @@ export default function Dashboard() {
                             >
                               Delete
                             </button>
+                          </>
                           )}
                         </div>
                       </div>
@@ -380,14 +397,14 @@ export default function Dashboard() {
                     ownerEmail: response.data!.room.ownerEmail || user?.email || 'You',
                     createdAt: response.data!.room.createdAt
                   }]);
-                  setToast({ message: 'Room created successfully!', type: 'success' });
-                  setTimeout(() => setToast(null), 3000);
+                  toast.success('Room created successfully!');
                   const roomUrl = roomPassword
                     ? `/room/${response.data!.room.id}?password=${encodeURIComponent(roomPassword)}`
                     : `/room/${response.data!.room.id}`;
                   navigate(roomUrl);
                 } else {
                   setError(response.message || 'Failed to create room');
+                  toast.error(response.message || 'Failed to create room');
                 }
               } catch (err: any) {
                 setError(err.message || 'Failed to create room');
@@ -487,11 +504,11 @@ export default function Dashboard() {
                     ownerEmail: response.data!.room.ownerEmail || 'Unknown',
                     createdAt: response.data!.room.createdAt
                   }]);
-                  setToast({ message: 'Successfully joined room!', type: 'success' });
-                  setTimeout(() => setToast(null), 3000);
+                  toast.success('Successfully joined room!');
                   navigate(`/room/${response.data!.room.id}`);
                 } else {
                   setError(response.message || 'Failed to join room');
+                  toast.error(response.message || 'Failed to join room');
                 }
               } catch (err: any) {
                 setError(err.message || 'Failed to join room');
@@ -552,6 +569,143 @@ export default function Dashboard() {
                     </>
                   ) : (
                     'Join Room'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showPasswordModal && (
+        <PasswordModal
+          isOpen={showPasswordModal}
+          onClose={() => {
+            setShowPasswordModal(false);
+            setPendingRoomId(null);
+          }}
+          onSubmit={(password) => {
+            if (pendingRoomId) {
+              navigate(`/room/${pendingRoomId}?password=${encodeURIComponent(password)}`);
+              setShowPasswordModal(false);
+              setPendingRoomId(null);
+            }
+          }}
+          title="Enter Room Password"
+          />
+      )}
+
+{showPasswordModal && (
+        <PasswordModal
+          isOpen={showPasswordModal}
+          onClose={() => {
+            setShowPasswordModal(false);
+            setPendingRoomId(null);
+          }}
+          onSubmit={(password) => {
+            if (pendingRoomId) {
+              navigate(`/room/${pendingRoomId}?password=${encodeURIComponent(password)}`);
+              setShowPasswordModal(false);
+              setPendingRoomId(null);
+            }
+          }}
+          title="Enter Room Password"
+        />
+      )}
+
+      {showInviteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Invite User to Room</h3>
+              <button
+                onClick={() => {
+                  setShowInviteModal(false);
+                  setInviteEmail('');
+                  setInviteRoomId(null);
+                  setError(null);
+                }}
+                className="text-gray-400 hover:text-gray-300 text-xl"
+              >
+                ×
+              </button>
+            </div>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (!inviteEmail.trim() || !inviteEmail.includes('@')) {
+                setError('Please enter a valid email address');
+                toast.error('Please enter a valid email address');
+                return;
+              }
+              if (!inviteRoomId) {
+                setError('Room ID is missing');
+                toast.error('Room ID is missing');
+                return;
+              }
+              setIsLoading(true);
+              setError(null);
+              try {
+                const response = await roomsApi.inviteUser(inviteRoomId, inviteEmail.trim());
+                if (response.success) {
+                  toast.success(`Invitation sent to ${inviteEmail}!`);
+                  setShowInviteModal(false);
+                  setInviteEmail('');
+                  setInviteRoomId(null);
+                } else {
+                  setError(response.message || 'Failed to send invitation');
+                  toast.error(response.message || 'Failed to send invitation');
+                }
+              } catch (err: any) {
+                setError(err.message || 'Failed to send invitation');
+                toast.error(err.message || 'Failed to send invitation');
+              } finally {
+                setIsLoading(false);
+              }
+            }} className="space-y-4">
+              <div>
+                <label className="block text-sm mb-2 font-medium">Email Address</label>
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="user@example.com"
+                  className="w-full px-3 py-2 rounded bg-gray-800 text-gray-100 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  required
+                  autoFocus
+                />
+                <p className="text-xs text-gray-400 mt-1">Enter the email address of the user you want to invite</p>
+              </div>
+              {error && (
+                <div className="bg-red-900/20 border border-red-800 rounded-lg p-3 text-red-300 text-sm">
+                  {error}
+                </div>
+              )}
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowInviteModal(false);
+                    setInviteEmail('');
+                    setInviteRoomId(null);
+                    setError(null);
+                  }}
+                  disabled={isLoading}
+                  className="flex-1 py-2 rounded bg-gray-700 hover:bg-gray-600 text-white disabled:opacity-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading || !inviteEmail.trim()}
+                  className="flex-1 py-2 rounded bg-green-600 hover:bg-green-500 text-white disabled:opacity-50 flex items-center justify-center transition-colors"
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Sending...
+                    </>
+                  ) : (
+                    'Send Invitation'
                   )}
                 </button>
               </div>

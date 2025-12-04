@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
+import { toast } from 'sonner';
 import { roomsApi } from '../utils/api';
+import { PasswordModal } from '../components/PasswordModal';
 
 type ChatMessage = {
   id: string;
@@ -28,8 +30,11 @@ export default function Chat() {
   const [newNickname, setNewNickname] = useState('');
   const [roomTTL, setRoomTTL] = useState<number | null>(null);
   const [isExtending, setIsExtending] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const hasAttemptedJoin = useRef(false);
 
   const socketUrl = useMemo(() => {
     if (typeof window !== 'undefined' && (window as any).APP_CONFIG?.APP_SOCKET_URL) {
@@ -72,6 +77,8 @@ export default function Chat() {
 
     socket.on('room-joined', (data: { room?: any; user?: { id: string; nickname: string } }) => {
       setError(null);
+      setPasswordError(null);
+      setShowPasswordModal(false);
       if (data.user) {
         setCurrentUserId(data.user.id);
         setCurrentNickname(data.user.nickname);
@@ -79,18 +86,22 @@ export default function Chat() {
       if (data.room?.ttl) {
         setRoomTTL(data.room.ttl);
       }
+      toast.success(`Successfully joined room ${roomId}`);
     });
     
     socket.on('join-error', (e: { message: string }) => {
       console.error('Join room error:', e);
       const errorMsg = e?.message || 'Failed to join room';
       setError(errorMsg);
+      toast.error(errorMsg);
 
-      if (errorMsg.includes(password) && !password && roomId) {
-        const roomPassword = prompt('This room requires a password. Please enter it:');
-        if (roomPassword !== null) {
-          navigate(`/room/${roomId}?password=${encodeURIComponent(roomPassword)}${nickname ? `&nickname=${encodeURIComponent(nickname)}` : ''}`, { replace: true });
-          window.location.reload();
+      if (errorMsg.includes('password') || errorMsg.includes('Invalid password')) {
+        if (!password && roomId) {
+          setShowPasswordModal(true);
+          setPasswordError(errorMsg);
+        } else if (password) {
+          setPasswordError('Invalid password. Please try again.');
+          setShowPasswordModal(true);
         }
       }
     });
@@ -129,15 +140,42 @@ export default function Chat() {
     socket.on('error', (error: { message: string }) => {
       console.error('Socket error:', error);
       setError(error.message);
+      toast.error(error.message);
     });
 
-    console.log('Emitting join-room with:', { roomId, password, nickname });
-    socket.emit('join-room', { roomId, password, nickname });
+    const checkAndJoin = async () => {
+      if (hasAttemptedJoin.current) return;
+      hasAttemptedJoin.current = true;
+
+      try {
+        const response = await roomsApi.getRoom(roomId!);
+        if (response.success && response.data?.room) {
+          const room = response.data.room;
+          if (room.hasPassword && !password) {
+            setShowPasswordModal(true);
+            hasAttemptedJoin.current = false;
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Error checking room:', err);
+      }
+
+      console.log('Emitting join-room with:', { roomId, password, nickname });
+      socket.emit('join-room', { roomId, password, nickname });
+    };
+
+    if (socket.connected) {
+      checkAndJoin();
+    } else {
+      socket.once('connect', checkAndJoin);
+    }
 
     return () => {
       console.log('Cleaning up socket connection');
       socket.emit('leave-room');
       socket.disconnect();
+      hasAttemptedJoin.current = false;
     };
   }, [roomId, password, nickname, socketUrl]);
 
@@ -151,7 +189,7 @@ export default function Chat() {
           setRoomTTL(response.data.room.ttl);
         }
       } catch (err) {
-        console.error('Error fetching room info:', error);
+        console.error('Error fetching room info:', err);
       }
     };
 
@@ -201,11 +239,14 @@ export default function Chat() {
       if (response.success && response.data?.ttl) {
         setRoomTTL(response.data.ttl);
         setError(null);
+        toast.success('Room extended successfully!');
       } else {
         setError(response.message || 'Failed to extend room');
+        toast.error(response.message || 'Failed to extend room');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to extend room');
+      toast.error(err.message || 'Failed to extend room');
     } finally {
       setIsExtending(false);
     }
@@ -234,6 +275,7 @@ export default function Chat() {
     e.preventDefault();
     if (!newNickname.trim() || newNickname.trim().length < 1 || newNickname.trim().length > 20) {
       setError('Nickname must be between 1 and 20 characters');
+      toast.error('Nickname must be between 1 and 20 characters');
       return;
     }
     
@@ -241,7 +283,14 @@ export default function Chat() {
     socketRef.current?.emit('update-nickname', { nickname: trimmedNickname });
     setShowNicknameModal(false);
     setError(null);
+    toast.success('Nickname updated successfully!');
   };
+
+  const handlePasswordSubmit = (submittedPassword: string) => {
+    setPasswordError(null);
+    navigate(`/room/${roomId}?password=${encodeURIComponent(submittedPassword)}${nickname ? `&nickname=${encodeURIComponent(nickname)}` : ''}`, { replace: true });
+    hasAttemptedJoin.current = false;
+  }
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 p-4">
@@ -391,6 +440,20 @@ export default function Chat() {
             </form>
           </div>
         </div>
+      )}
+
+      {showPasswordModal && (
+        <PasswordModal
+          isOpen={showPasswordModal}
+          onClose={() => {
+            setShowPasswordModal(false);
+            setPasswordError(null);
+            navigate('/dashboard');
+          }}
+          onSubmit={handlePasswordSubmit}
+          title="Enter Room Password"
+          error={passwordError}
+        />
       )}
     </div>
   );
