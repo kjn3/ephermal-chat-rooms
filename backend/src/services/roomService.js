@@ -333,6 +333,5 @@ module.exports = {
   getUserRooms,
   extendRoomTTL,
   inviteUserToRoom,
-  getUserInvitations,
-  deleteInvitation
+  getUserInvitations
 };

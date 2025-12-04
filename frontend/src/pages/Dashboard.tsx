@@ -171,10 +171,11 @@ export default function Dashboard() {
                 <>
                   {myRooms.map((r) => (
                     <li key={r.id} className="bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition-colors">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium flex items-center gap-2 mb-1">
-                            <span className="truncate">{r.name}</span>
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className='text-lg font-semibold mb-1 break-words'>{r.name}</div>
+                            <div className='flex items-cetner gap-2 mb-2'>
                             {r.isOwner && (
                               <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded flex-shrink-0">Owner</span>
                             )}
@@ -193,6 +194,7 @@ export default function Dashboard() {
                             <span>Created at{new Date(r.createdAt || '').toLocaleDateString()}</span>
                           </div>
                         </div>
+                        </div>
                         <div className="flex items-center gap-2 ml-4">
                           <button
                             onClick={async () => {
@@ -203,7 +205,7 @@ export default function Dashboard() {
                                 toast.error('Failed to copy Room ID');
                               }
                             }}
-                            className="text-sm px-2 py-1 rounded bg-gray-600 hover:bg-gray-500 text-white transition-colors"
+                            className="text-xs px-2 py-1 rounded bg-gray-600 hover:bg-gray-500 text-white transition-colors"
                             title="Copy Room ID"
                           >
                             Copy Room ID
@@ -217,7 +219,7 @@ export default function Dashboard() {
                                 navigate(`/room/${r.id}`);
                               }
                             }}
-                            className='text-sm px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white transition-colors'
+                            className='text-xs px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white transition-colors'
                           >
                             Open
                           </button>
@@ -228,7 +230,7 @@ export default function Dashboard() {
                                 setInviteRoomId(r.id);
                                 setShowInviteModal(true);
                               }}
-                              className='text-sm px-3 py-1 rounded bg-green-600 hover:bg-green-500 text-white transition-colors'
+                              className='text-xs px-3 py-1 rounded bg-green-600 hover:bg-green-500 text-white transition-colors'
                               title="Invite user by email"
                               >
                                 Invite
@@ -251,7 +253,7 @@ export default function Dashboard() {
                                   }
                                 }
                               }}
-                              className="text-sm px-3 py-1 rounded bg-red-600 hover:bg-red-500 text-white transition-colors"
+                              className="text-xs px-3 py-1 rounded bg-red-600 hover:bg-red-500 text-white transition-colors"
                             >
                               Delete
                             </button>

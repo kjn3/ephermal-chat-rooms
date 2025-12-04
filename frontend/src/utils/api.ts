@@ -59,6 +59,17 @@ class ApiClient {
         localStorage.removeItem('ecr_user');
         window.location.href = '/';
       }
+
+      if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+        const errorMessages = data.errors.map((err: any) => {
+          if (err.msg) {
+            const field = err.param ? `${err.param}: ` : '';
+            return `${field}${err.msg}`;
+          }
+          return err;
+        }).join(', ');
+        throw new Error(errorMessages);
+      }
       throw new Error(data.message || data.error || `Request failed with status ${response.status}`);
     }
     

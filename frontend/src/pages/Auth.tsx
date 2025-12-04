@@ -63,8 +63,10 @@ export default function Auth() {
     <div className="min-h-screen bg-gray-950 text-gray-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-gray-900/60 backdrop-blur rounded-2xl border border-gray-800 p-6 space-y-6">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold">Welcome</h1>
-          <p className="text-gray-400 text-sm">Log in or create an account to manage your rooms.</p>
+          <h1 className="text-2xl font-semibold">{mode === 'login' ? 'Welcome' : 'Register'}</h1>
+          <p className="text-gray-400 text-sm">
+            {mode === 'login' ? 'Log in to manage your rooms.' : 'Create an account to manage your rooms.'}
+          </p>
         </div>
 
         <form onSubmit={handleAuth} className="space-y-4">
