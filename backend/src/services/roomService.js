@@ -251,10 +251,73 @@ async function extendRoomTTL(roomId) {
         message: 'Room not found'
       };
     }
-    await updateItem(ROOMS_TABLE, { id: roomId }, { ttl: calculateTTL() + 86400, lastActivity: new Date().toISOString() });
-    return { success: true, message: 'Room TTL extended successfully' };
+    const newTTL = calculateTTL() + 86400;
+    await updateItem(ROOMS_TABLE, { id: roomId }, { ttl: newTTL, lastActivity: new Date().toISOString() });
+    return { success: true, message: 'Room TTL extended successfully', room: {...room, ttl: newTTL} };
   } catch (error) {
     console.error('Error extending room TTL:', error);
+    throw error;
+  }
+}
+
+async function inviteUserToRoom(roomId, inviteeEmail, inviterEmail) {
+  try {
+    const room = await getRoom(roomId);
+    if (!room) {
+      return {
+        success: false,
+        message: 'Room not found'
+      };
+    }
+
+    if (room.ownerEmail !== inviterEmail) {
+      return {
+        success: false,
+        message: 'You are not the owner of this room'
+      };
+    }
+
+    const INVITATIONS_TABLE = process.env.DYNAMODB_INVITATIONS_TABLE_NAME || 'invitations';
+    const invitationId = uuidv4();
+    const invitation = {
+      id: invitationId,
+      roomId,
+      roomName: room.name,
+      inviteeEmail,
+      inviterEmail,
+      createdAt: new Date().toISOString(),
+      status: 'pending',
+      ttl: calculateTTL() + (7 * 24 * 60 * 60)
+    };
+  
+    await putItem(INVITATIONS_TABLE, invitation);
+    return { success: true, invitation };
+  } catch (error) {
+    console.error('Error inviting user to room:', error);
+    throw error;
+  }
+}
+
+async function getUserInvitations(userEmail) {
+  try {
+    const INVITATIONS_TABLE = process.env.DYNAMODB_INVITATIONS_TABLE_NAME || 'invitations';
+    const { scanItems } = require('.../database/dynamodb');
+    const result = await scanItems(INVITATIONS_TABLE, 'inviteeEmail = :email', {
+      ':email': userEmail
+    });
+    
+    const invitations = (result.Items || [])
+    .filter(inv => inv.status === 'pending')
+    .map(inv => ({
+      id: inv.id,
+      roomId: inv.roomId,
+      roomName: inv.roomName,
+      inviterEmail: inv.inviterEmail,
+      createdAt: inv.createdAt
+    }));
+    return invitations;
+  } catch (error) {
+    console.error('Error getting user invitations:', error);
     throw error;
   }
 }
@@ -268,5 +331,8 @@ module.exports = {
   addMessage,
   updateRoomActivity,
   getUserRooms,
-  extendRoomTTL
+  extendRoomTTL,
+  inviteUserToRoom,
+  getUserInvitations,
+  deleteInvitation
 };

@@ -122,10 +122,27 @@ async function queryItems(tableName, keyConditionExpression, expressionAttribute
   }
 }
 
+async function scanItems(tableName, filterExpression, expressionAttributeValues) {
+  const command = new ScanCommand({
+    TableName: tableName,
+    ...(filterExpression && { FilterExpression: filterExpression }),
+    ...(expressionAttributeValues && { ExpressionAttributeValues: expressionAttributeValues })
+  });
+
+  try {
+    const result = await dynamodb.send(command);
+    return result;
+  } catch (error) {
+    console.error('Error scanning items:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   putItem,
   getItem,
   updateItem,
   deleteItem,
-  queryItems
+  queryItems,
+  scanItems
 };

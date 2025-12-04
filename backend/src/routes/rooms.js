@@ -1,6 +1,6 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
-const { createRoom, getRoom, deleteRoom, joinRoom, getUserRooms, extendRoomTTL } = require('../services/roomService');
+const { createRoom, getRoom, deleteRoom, joinRoom, getUserRooms, extendRoomTTL, inviteUserToRoom, getUserInvitations } = require('../services/roomService');
 const { validateRoomData } = require('../middleware/validation');
 const { authenticateToken, optionalAuth } = require('../middleware/auth');
 
@@ -197,4 +197,43 @@ router.post('/:id/extend-ttl', authenticateToken, async (req, res) => {
   }
 });
 
+router.post('/:id/invite', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { email } = req.body;
+    const inviterEmail = req.user.sub;
+    
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ success: false, message: 'Invalid email address' });
+    }
+
+    const result = await inviteUserToRoom(id, email, inviterEmail);
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    res.json({
+      success: true,
+      message: `Invitation sent to ${email}`,
+      data: {
+        invitation: result.invitation
+      }
+    });
+  } catch (error) {
+    console.error('Error inviting user to room:', error);
+    res.status(500).json({ success: false, message: 'Failed to invite user to room' });
+  }
+});
+
+router.get('/invitations', authenticateToken, async (req, res) => {
+  try {
+    const userEmail = req.user.sub;
+    const invitations = await getUserInvitations(userEmail);
+    res.json({ success: true, data: { invitations } });
+  } catch (error) {
+    console.error('Error getting user invitations:', error);
+    res.status(500).json({ success: false, message: 'Failed to get user invitations' });
+  }
+});
 module.exports = router;
