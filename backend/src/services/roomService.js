@@ -306,15 +306,27 @@ async function getUserInvitations(userEmail) {
       ':email': userEmail
     });
     
-    const invitations = (result.Items || [])
-    .filter(inv => inv.status === 'pending')
-    .map(inv => ({
-      id: inv.id,
-      roomId: inv.roomId,
-      roomName: inv.roomName,
-      inviterEmail: inv.inviterEmail,
-      createdAt: inv.createdAt
-    }));
+    const pendingInvitations = (result.Items || []).filter(inv => inv.status === 'pending');
+    
+    const validInvitations = [];
+    for (const inv of pendingInvitations) {
+      try {
+        const room = await getRoom(inv.roomId);
+        if (room) {
+          validInvitations.push({
+            id: inv.id,
+            roomId: inv.roomId,
+            roomName: inv.roomName || room.name,
+            inviterEmail: inv.inviterEmail,
+            createdAt: inv.createdAt
+          });
+        } else {
+          console.log(`Skipping invitation ${inv.id} - room ${inv.roomId} no longer exists`);
+        }
+      } catch (roomError) {
+        console.error(`Error checking room ${inv.roomId} for invitation ${inv.id}:`, roomError);
+      }
+    }
     return invitations;
   } catch (error) {
     console.error('Error getting user invitations:', error);
