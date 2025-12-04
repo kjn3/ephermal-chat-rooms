@@ -93,15 +93,28 @@ export default function Dashboard() {
                 if (!user) return;
                 setIsLoadingRooms(true);
                 try {
-                  const response = await roomsApi.getUserRooms();
-                  if (response.success && response.data?.rooms) {
-                    setMyRooms(response.data.rooms);
+                  const [roomsResponse, invitesResponse] = await Promise.all([
+                    roomsApi.getUserRooms(),
+                    roomsApi.getInvitations()
+                  ]);
+
+                  if (roomsResponse.success && roomsResponse.data?.rooms) {
+                    setMyRooms(roomsResponse.data.rooms);
                     setError(null);
                   } else {
-                    setError(response.message || 'Failed to fetch rooms');
+                    setError(roomsResponse.message || 'Failed to fetch rooms');
+                  }
+
+                  if (invitesResponse.success && invitesResponse.data?.invitations) {
+                    setInvites(invitesResponse.data.invitations.map((inv: any) => ({
+                      id: inv.roomId,
+                      name: inv.roomName,
+                      lastActivity: inv.createdAt,
+                      ownerEmail: inv.inviterEmail
+                    })));
                   }
                 } catch (err: any) {
-                  setError(err.message || 'Failed to fetch rooms');
+                  setError(err.message || 'Failed to fetch data');
                 } finally {
                   setIsLoadingRooms(false);
                 }

@@ -301,7 +301,7 @@ async function inviteUserToRoom(roomId, inviteeEmail, inviterEmail) {
 async function getUserInvitations(userEmail) {
   try {
     const INVITATIONS_TABLE = process.env.DYNAMODB_INVITATIONS_TABLE_NAME || 'invitations';
-    const { scanItems } = require('.../database/dynamodb');
+    const { scanItems } = require('../database/dynamodb');
     const result = await scanItems(INVITATIONS_TABLE, 'inviteeEmail = :email', {
       ':email': userEmail
     });

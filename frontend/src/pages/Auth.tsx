@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { authApi } from '../utils/api';
 
@@ -26,7 +27,9 @@ export default function Auth() {
     const password = passRef.current?.value || '';
     
     if (!email || !password) {
-      setError('Please fill in all fields');
+      const errorMsg = 'Please fill in all fields';
+      setError(errorMsg);
+      toast.error(errorMsg);
       setIsLoading(false);
       return;
     }
@@ -46,14 +49,19 @@ export default function Auth() {
           login(token, user);
           navigate('/dashboard');
         } else {
-          setError('Invalid response from server - no token received');
+          const errorMsg = 'Invalid response from server - no token received';
+          setError(errorMsg);
+          toast.error(errorMsg);
         }
       } else {
-        setError(response.message || response.errors?.[0]?.msg || 'Authentication failed');
+        const errorMsg = response.message || response.errors?.[0]?.msg || 'Authentication failed';
+        setError(errorMsg);
+        toast.error(errorMsg);
       }
     } catch (err: any) {
       const errorMessage = err.message || 'Network error';
       setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
