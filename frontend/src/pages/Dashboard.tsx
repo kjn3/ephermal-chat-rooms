@@ -72,6 +72,8 @@ export default function Dashboard() {
             lastActivity: inv.createdAt,
             ownerEmail: inv.inviterEmail
           })));
+        } else if (!response.success) {
+          console.warn('Failed to fetch invitations:', response.message);
         }
       } catch (err: any) {
         console.error('Error fetching invitations:', err);
