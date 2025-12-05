@@ -305,7 +305,7 @@ async function getUserInvitations(userEmail) {
     const result = await scanItems(INVITATIONS_TABLE, 'inviteeEmail = :email', {
       ':email': userEmail
     });
-    
+    console.log('DEBUG invitations scan result: ', result);
     const pendingInvitations = (result.Items || []).filter(inv => inv.status === 'pending');
     
     const validInvitations = [];
@@ -327,7 +327,7 @@ async function getUserInvitations(userEmail) {
         console.error(`Error checking room ${inv.roomId} for invitation ${inv.id}:`, roomError);
       }
     }
-    return invitations;
+    return validInvitations;
   } catch (error) {
     console.error('Error getting user invitations:', error);
     throw error;

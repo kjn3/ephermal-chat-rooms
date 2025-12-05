@@ -229,6 +229,7 @@ router.post('/:id/invite', authenticateToken, async (req, res) => {
 router.get('/invitations', authenticateToken, async (req, res) => {
   try {
     const userEmail = req.user.sub;
+    console.log('DEBUG User email:::', userEmail);
     const invitations = await getUserInvitations(userEmail);
     res.json({ success: true, data: { invitations } });
   } catch (error) {
