@@ -85,6 +85,7 @@ router.get('/invitations', authenticateToken, async (req, res) => {
 });
 
 router.get('/:id', optionalAuth, async (req, res) => {
+  console.log('DEBUG ID TEST');
   try {
     const { id } = req.params;
     const room = await getRoom(id);
