@@ -140,6 +140,19 @@ router.post('/:id/join', optionalAuth, async (req, res) => {
   }
 });
 
+router.get('/invitations', authenticateToken, async (req, res) => {
+  console.log('asd');
+  try {
+    const userEmail = req.user.sub;
+    console.log('DEBUG User email:::', userEmail);
+    const invitations = await getUserInvitations(userEmail);
+    res.json({ success: true, data: { invitations } });
+  } catch (error) {
+    console.error('Error getting user invitations:', error);
+    res.status(500).json({ success: false, message: 'Failed to get user invitations' });
+  }
+});
+
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -227,16 +240,4 @@ router.post('/:id/invite', authenticateToken, async (req, res) => {
   }
 });
 
-router.get('/invitations', authenticateToken, async (req, res) => {
-  console.log('asd');
-  try {
-    const userEmail = req.user.sub;
-    console.log('DEBUG User email:::', userEmail);
-    const invitations = await getUserInvitations(userEmail);
-    res.json({ success: true, data: { invitations } });
-  } catch (error) {
-    console.error('Error getting user invitations:', error);
-    res.status(500).json({ success: false, message: 'Failed to get user invitations' });
-  }
-});
 module.exports = router;
