@@ -7,6 +7,7 @@ const { authenticateToken, optionalAuth } = require('../middleware/auth');
 const router = express.Router();
 
 router.get('/', authenticateToken, async (req, res) => {
+  console.log('test rooms get');
   try {
     const userEmail = req.user.sub;
     const rooms = await getUserRooms(userEmail);
@@ -227,6 +228,7 @@ router.post('/:id/invite', authenticateToken, async (req, res) => {
 });
 
 router.get('/invitations', authenticateToken, async (req, res) => {
+  console.log('asd');
   try {
     const userEmail = req.user.sub;
     console.log('DEBUG User email:::', userEmail);
